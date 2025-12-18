@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,17 +7,64 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { signIn, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname || "/";
+
+  useEffect(() => {
+    if (user) {
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, from]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validation = loginSchema.safeParse({ email, password });
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await signIn(email, password);
+    setIsLoading(false);
+
+    if (error) {
+      let message = error.message;
+      if (message.includes("Invalid login credentials")) {
+        message = "Invalid email or password. Please try again.";
+      }
+      toast({
+        title: "Sign In Failed",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
-      title: "Authentication Required",
-      description: "Connect Lovable Cloud to enable user authentication.",
+      title: "Welcome back!",
+      description: "You have successfully signed in.",
     });
   };
 
@@ -60,6 +107,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -83,6 +131,7 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
@@ -105,9 +154,15 @@ export default function Login() {
               </Label>
             </div>
 
-            <Button type="submit" variant="hero" size="lg" className="w-full">
-              Sign In
-              <ArrowRight className="w-5 h-5 ml-2" />
+            <Button
+              type="submit"
+              variant="hero"
+              size="lg"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? "Signing In..." : "Sign In"}
+              {!isLoading && <ArrowRight className="w-5 h-5 ml-2" />}
             </Button>
           </form>
 

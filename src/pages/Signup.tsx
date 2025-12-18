@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Calendar, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,21 +7,71 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { z } from "zod";
+
+const signupSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
-  const [accountType, setAccountType] = useState("attendee");
+  const [accountType, setAccountType] = useState<"attendee" | "organizer">("attendee");
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
+  const { signUp, user } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) {
+      navigate("/", { replace: true });
+    }
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validation = signupSchema.safeParse(formData);
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    const { error } = await signUp(
+      formData.email,
+      formData.password,
+      formData.name,
+      accountType
+    );
+    setIsLoading(false);
+
+    if (error) {
+      let message = error.message;
+      if (message.includes("User already registered")) {
+        message = "An account with this email already exists. Please sign in instead.";
+      }
+      toast({
+        title: "Sign Up Failed",
+        description: message,
+        variant: "destructive",
+      });
+      return;
+    }
+
     toast({
-      title: "Authentication Required",
-      description: "Connect Lovable Cloud to enable user registration.",
+      title: "Account Created!",
+      description: "Welcome to EventHub. You can now start exploring events.",
     });
   };
 
@@ -78,7 +128,7 @@ export default function Signup() {
               <Label>I want to</Label>
               <RadioGroup
                 value={accountType}
-                onValueChange={setAccountType}
+                onValueChange={(value) => setAccountType(value as "attendee" | "organizer")}
                 className="grid grid-cols-2 gap-4"
               >
                 <div>
@@ -125,6 +175,7 @@ export default function Signup() {
                     setFormData({ ...formData, name: e.target.value })
                   }
                   className="pl-10"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -142,6 +193,7 @@ export default function Signup() {
                     setFormData({ ...formData, email: e.target.value })
                   }
                   className="pl-10"
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -159,6 +211,7 @@ export default function Signup() {
                     setFormData({ ...formData, password: e.target.value })
                   }
                   className="pl-10 pr-10"
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
@@ -174,9 +227,15 @@ export default function Signup() {
               </div>
             </div>
 
-            <Button type="submit" variant="hero" size="lg" className="w-full">
-              Create Account
-              <ArrowRight className="w-5 h-5 ml-2" />
+            <Button
+              type="submit"
+              variant="hero"
+              size="lg"
+              className="w-full"
+              disabled={isLoading}
+            >
+              {isLoading ? "Creating Account..." : "Create Account"}
+              {!isLoading && <ArrowRight className="w-5 h-5 ml-2" />}
             </Button>
           </form>
 

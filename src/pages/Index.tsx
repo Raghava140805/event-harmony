@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { EventCard } from "@/components/events/EventCard";
-import { mockEvents } from "@/data/mockEvents";
+import { useEvents } from "@/hooks/useEvents";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const features = [
   {
@@ -58,7 +59,8 @@ const stats = [
 ];
 
 export default function Index() {
-  const featuredEvents = mockEvents.filter((e) => e.featured).slice(0, 3);
+  const { data: events, isLoading } = useEvents();
+  const featuredEvents = events?.filter((e) => e.is_featured).slice(0, 3) || [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -66,7 +68,6 @@ export default function Index() {
 
       {/* Hero Section */}
       <section className="relative pt-24 pb-16 lg:pt-32 lg:pb-24 overflow-hidden">
-        {/* Background Elements */}
         <div className="absolute inset-0 gradient-hero" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl" />
@@ -123,7 +124,6 @@ export default function Index() {
               </Button>
             </motion.div>
 
-            {/* Stats */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -165,11 +165,23 @@ export default function Index() {
             </Button>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {featuredEvents.map((event, index) => (
-              <EventCard key={event.id} event={event} index={index} />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(3)].map((_, i) => (
+                <Skeleton key={i} className="h-80 rounded-2xl" />
+              ))}
+            </div>
+          ) : featuredEvents.length > 0 ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredEvents.map((event, index) => (
+                <EventCard key={event.id} event={event} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No featured events yet. Check back soon!</p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -182,8 +194,7 @@ export default function Index() {
               <span className="text-gradient-primary">Succeed</span>
             </h2>
             <p className="text-muted-foreground">
-              Powerful tools to help you create, promote, and manage events of any
-              size
+              Powerful tools to help you create, promote, and manage events of any size
             </p>
           </div>
 
@@ -223,17 +234,14 @@ export default function Index() {
                 Ready to Create Your First Event?
               </h2>
               <p className="text-primary-foreground/80 mb-8">
-                Join thousands of organizers who trust EventHub to bring their
-                events to life. Get started for free today.
+                Join thousands of organizers who trust EventHub to bring their events to life.
               </p>
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button variant="accent" size="xl" asChild>
-                  <Link to="/signup">
-                    Get Started Free
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </Link>
-                </Button>
-              </div>
+              <Button variant="accent" size="xl" asChild>
+                <Link to="/signup">
+                  Get Started Free
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Link>
+              </Button>
               <div className="flex items-center justify-center gap-6 mt-8 text-sm text-primary-foreground/80">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
