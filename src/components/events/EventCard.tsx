@@ -2,33 +2,21 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Calendar, MapPin, Users, Clock, Heart } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-export interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  category: string;
-  price: number;
-  capacity: number;
-  attendees: number;
-  image: string;
-  organizer: string;
-  featured?: boolean;
-}
+import { EventWithDetails } from "@/hooks/useEvents";
+import { format } from "date-fns";
 
 interface EventCardProps {
-  event: Event;
+  event: EventWithDetails;
   index?: number;
 }
 
 export function EventCard({ event, index = 0 }: EventCardProps) {
-  const spotsLeft = event.capacity - event.attendees;
+  const spotsLeft = event.capacity - event.bookings_count;
   const isAlmostFull = spotsLeft < 20;
+
+  const formattedDate = format(new Date(event.date), "MMMM d, yyyy");
+  const formattedTime = event.time.slice(0, 5);
 
   return (
     <motion.div
@@ -42,7 +30,7 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
           {/* Image */}
           <div className="relative h-48 overflow-hidden">
             <img
-              src={event.image}
+              src={event.image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&auto=format&fit=crop"}
               alt={event.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
@@ -50,7 +38,7 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
             
             {/* Category Badge */}
             <Badge className="absolute top-3 left-3 bg-primary/90 text-primary-foreground border-0">
-              {event.category}
+              {event.category?.name || "General"}
             </Badge>
 
             {/* Favorite Button */}
@@ -58,7 +46,6 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
               className="absolute top-3 right-3 w-9 h-9 rounded-full bg-card/80 backdrop-blur-sm flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-card transition-colors"
               onClick={(e) => {
                 e.preventDefault();
-                // TODO: Add to favorites
               }}
             >
               <Heart className="w-4 h-4" />
@@ -67,7 +54,7 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
             {/* Price */}
             <div className="absolute bottom-3 right-3 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-1.5">
               <span className="text-lg font-bold text-foreground">
-                {event.price === 0 ? "Free" : `$${event.price}`}
+                {Number(event.price) === 0 ? "Free" : `$${event.price}`}
               </span>
             </div>
           </div>
@@ -85,9 +72,9 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Calendar className="w-4 h-4 text-primary" />
-                <span>{event.date}</span>
+                <span>{formattedDate}</span>
                 <Clock className="w-4 h-4 text-primary ml-2" />
-                <span>{event.time}</span>
+                <span>{formattedTime}</span>
               </div>
               
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -105,7 +92,7 @@ export function EventCard({ event, index = 0 }: EventCardProps) {
                   </span>
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  by {event.organizer}
+                  by {event.organizer?.full_name || "Unknown"}
                 </span>
               </div>
             </div>

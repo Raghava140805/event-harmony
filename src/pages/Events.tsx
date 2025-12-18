@@ -1,28 +1,38 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, SlidersHorizontal, MapPin, Calendar as CalendarIcon } from "lucide-react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { EventCard } from "@/components/events/EventCard";
-import { mockEvents, categories } from "@/data/mockEvents";
+import { useEvents, useCategories } from "@/hooks/useEvents";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Events() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [priceFilter, setPriceFilter] = useState<"all" | "free" | "paid">("all");
 
+  const { data: events, isLoading: eventsLoading } = useEvents();
+  const { data: categories } = useCategories();
+
+  const categoryNames = useMemo(() => {
+    return ["All", ...(categories?.map((c) => c.name) || [])];
+  }, [categories]);
+
   const filteredEvents = useMemo(() => {
-    return mockEvents.filter((event) => {
+    if (!events) return [];
+    
+    return events.filter((event) => {
       const matchesSearch =
         event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (event.description?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false) ||
         event.location.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesCategory =
-        selectedCategory === "All" || event.category === selectedCategory;
+        selectedCategory === "All" || event.category?.name === selectedCategory;
 
       const matchesPrice =
         priceFilter === "all" ||
@@ -31,7 +41,7 @@ export default function Events() {
 
       return matchesSearch && matchesCategory && matchesPrice;
     });
-  }, [searchQuery, selectedCategory, priceFilter]);
+  }, [events, searchQuery, selectedCategory, priceFilter]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,7 +109,7 @@ export default function Events() {
 
           {/* Categories */}
           <div className="flex items-center gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map((category) => (
+            {categoryNames.map((category) => (
               <Badge
                 key={category}
                 variant={selectedCategory === category ? "default" : "outline"}
@@ -120,7 +130,17 @@ export default function Events() {
       {/* Events Grid */}
       <section className="py-10 lg:py-16">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          {filteredEvents.length > 0 ? (
+          {eventsLoading ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="space-y-4">
+                  <Skeleton className="h-48 w-full rounded-2xl" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              ))}
+            </div>
+          ) : filteredEvents.length > 0 ? (
             <>
               <p className="text-sm text-muted-foreground mb-6">
                 Showing {filteredEvents.length} events
